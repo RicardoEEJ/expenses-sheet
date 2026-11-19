@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Monthly Expenses</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet"><style id="css">
+/* VOICE: calm, clear money tool – a phone-first ledger, no clutter
+   IDEA: a pocket ledger page: one bottom line, then tabs for each column of the sheet
+   PICTURE: the "where income goes" bar – fixed, personal, savings, and what's left (or the overflow)
+   COLOUR and TYPE: ice ground, deep ink, hot pink only for money over budget; Space Grotesk figures + Inter
+   LAYOUT: single 720px column; sticky tab row; rows open a bottom sheet to edit; + button to add fast */
+:root{color-scheme:light dark;--bg:light-dark(#dff1f7,#06222e);--card:light-dark(#fff,#0c3242);--ink:light-dark(#06222e,#e6f4f9);--mute:light-dark(#4a6773,#8fb3c1);--line:light-dark(#c6e2ec,#1a4a5c);--pink:#ff2e7e;--fix:light-dark(#06222e,#e6f4f9);--per:light-dark(#2b88ad,#5cc0e6);--sav:light-dark(#8fd0e4,#2f7d9b);--free:light-dark(#b9e3f0,#174759)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+body.lock{overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--per);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+header{padding:22px 0 14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.month{font:600 15px/1.2 'Space Grotesk',sans-serif;margin:0}
+#status{font-size:13px;color:var(--mute);white-space:nowrap}
+.fig1{font:600 clamp(40px,12vw,56px)/1.05 'Space Grotesk',sans-serif;margin:10px 0 2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.neg{color:var(--pink)}
+.lead{margin:0;color:var(--mute)}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:8px;scrollbar-width:none}
+nav a{flex:none;text-decoration:none;color:var(--ink);padding:9px 14px;border-radius:999px;font-weight:500;font-size:15px;min-height:40px}
+nav a.on{background:var(--ink);color:var(--bg)}
+main{padding:18px 0 110px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:14px}
+h2{font:600 22px/1.15 'Space Grotesk',sans-serif;margin:0 0 4px}
+h3{font:600 17px/1.2 'Space Grotesk',sans-serif;margin:0 0 10px}
+.mute{color:var(--mute);font-size:14px;margin:0}
+.big{font:600 30px/1.1 'Space Grotesk',sans-serif;margin:6px 0;font-variant-numeric:tabular-nums}
+.bar{position:relative;display:flex;height:34px;border-radius:9px;overflow:hidden;background:var(--line);margin:14px 0 6px}
+.bar span{height:100%}
+.mark{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--pink);border-radius:2px}
+.over{background:repeating-linear-gradient(135deg,var(--pink) 0 6px,transparent 6px 11px)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:9px;flex:none}
+.leg{list-style:none;margin:8px 0 0;padding:0}
+.leg button,.list button.row{width:100%;display:flex;align-items:center;gap:8px;background:none;border:0;border-top:1px solid var(--line);padding:12px 2px;min-height:48px;text-align:left}
+.leg li:first-child button,.list li:first-child button.row{border-top:0}
+.nm{flex:1;display:flex;flex-direction:column}
+.nm small{color:var(--mute);font-size:13px}
+.amt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+.amt.zero{color:var(--mute)}
+.list{list-style:none;margin:0;padding:0}
+.grp{width:100%;display:flex;justify-content:space-between;gap:8px;background:none;border:0;border-top:1px solid var(--line);font:600 13px/1.2 Inter,sans-serif;color:var(--mute);padding:18px 2px 8px;min-height:44px;text-align:left}
+.list li:first-child .grp{border-top:0}
+.list li{display:flex;align-items:stretch;border-top:1px solid var(--line);background:var(--card)}.list li:first-child{border-top:0}
+.list li>button.row,.list li>.grp{border-top:0;flex:1}
+.list li.in{padding-left:12px}
+.h{flex:none;width:34px;display:flex;align-items:center;justify-content:center;color:var(--mute);touch-action:none;cursor:grab;opacity:.75}
+.drag{position:relative;z-index:3;box-shadow:0 10px 24px #0004;border-radius:10px;opacity:.97}
+body.dragging{user-select:none;-webkit-user-select:none}body.dragging .h{cursor:grabbing}
+.hint{font-size:13px;margin:10px 0 0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.hb{display:grid;grid-template-columns:minmax(0,7.5em) minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;font-size:14px}
+.hb i{display:block;height:12px;border-radius:4px;background:var(--per)}
+.meter{height:12px;border-radius:6px;background:var(--line);overflow:hidden;margin:10px 0 6px}
+.meter i{display:block;height:100%;background:var(--per)}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.trio div{font-size:13px;color:var(--mute)}.trio b{display:block;font:600 17px/1.3 'Space Grotesk',sans-serif;color:var(--ink);white-space:nowrap}
+.add{width:100%;margin-top:8px;min-height:46px;border:1.5px dashed var(--line);background:none;border-radius:12px;font-weight:500}
+.nmb{border-style:solid;border-color:var(--ink);margin:4px 0 14px}
+.pm{display:flex;gap:8px;align-items:center;padding:12px 2px;border-top:1px solid var(--line)}.pm:first-child{border-top:0}
+.inl{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+input,select{font-size:16px;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;min-height:44px}
+.inl input{width:7em}
+#fab{position:fixed;right:max(18px,calc(50vw - 342px));bottom:22px;z-index:6;width:60px;height:60px;border-radius:50%;border:0;background:var(--pink);color:#fff;font-size:32px;line-height:1;box-shadow:0 6px 18px #0004}
+#ov{position:fixed;inset:0;z-index:10;background:#0008;display:none;align-items:flex-end;justify-content:center}
+#ov.open{display:flex}
+#sheet{background:var(--card);width:100%;max-width:720px;max-height:88vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:20px 18px 26px}
+label{display:block;font-size:14px;color:var(--mute);margin-bottom:12px}
+label input,label select{display:block;width:100%;margin-top:5px;color:var(--ink)}
+.ent{display:flex;gap:8px;margin-bottom:8px}
+.ent input{flex:1}
+.x{width:44px;min-height:44px;border:0;border-radius:10px;background:var(--bg);font-size:20px}
+.btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btns button{min-height:46px;border-radius:12px;padding:0 16px;border:1.5px solid var(--line);background:none;font-weight:500}
+.btns .pri{background:var(--ink);color:var(--bg);border-color:var(--ink);margin-left:auto}
+.btns .danger{color:var(--pink);border-color:var(--pink)}
+.qamt{font:600 30px 'Space Grotesk',sans-serif;text-align:right}
+.tot{display:flex;justify-content:space-between;font-weight:600;margin-top:6px}
+.err{color:var(--pink);font-size:14px;min-height:1.2em;margin:4px 0 0}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:12;max-width:90vw}
+#toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){#toast{transition:none}}
+</style></head><body><div id="shell">
+<header class="wrap"><div class="top"><p class="month" id="month"></p><span id="status"></span></div><p class="fig1" id="free"></p><p class="lead" id="freeLabel"></p></header>
+<nav><div class="wrap"><a href="#summary" data-t="summary">Summary</a><a href="#income" data-t="income">Income</a><a href="#fixed" data-t="fixed">Fixed</a><a href="#personal" data-t="personal">Personal</a><a href="#savings" data-t="savings">Savings</a><a href="#banks" data-t="banks">Banks</a></div></nav>
+<main class="wrap" id="view"></main>
+<button id="fab" aria-label="Add expense">+</button>
+<div id="ov"><div id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" role="status"></div>
+</div><script id="app">{
+const SHELL=document.getElementById('shell').innerHTML;
+const CSS=document.getElementById('css').textContent;
+const APP=document.getElementById('app').textContent;
+let S=JSON.parse(document.getElementById('data').textContent);
+const $=s=>document.querySelector(s);
+const fmt=new Intl.NumberFormat('en-IE',{style:'currency',currency:'EUR'});
+const r2=v=>Math.round(v*100)/100;
+const eur=v=>fmt.format(r2(v)).replace('-','−');
+const sum=a=>a.reduce((t,x)=>t+x,0);
+const tot=it=>r2(sum(it.e));
+const secTot=k=>r2(sum(S[k].map(tot)));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=s=>{const t=String(s).replace(/\s|€/g,'').replace(',','.');if(t==='')return NaN;const v=Number(t);return isFinite(v)?r2(v):NaN};
+const uid=()=>'x'+Math.random().toString(36).slice(2,9);
+const pct=(a,b)=>b>0?Math.max(0,Math.min(100,a/b*100)):0;
+const SECS={income:'Income',fixed:'Fixed costs',personal:'Personal spending',savings:'Savings pot',banks:'Banks',deposits:'Deposits held'};
+const SUBS={income:'Money coming in this month.',fixed:'Bills and subscriptions that repeat every month.',personal:'Day-to-day and one-off spending. Tap a category to see or add each purchase.',banks:'Account balances. Not part of the monthly maths.'};
+
+function calc(){const inc=secTot('income'),fix=secTot('fixed'),per=secTot('personal'),target=r2(inc*S.savePct/100),used=secTot('savings');return {inc,fix,per,target,used,left:r2(target-used),free:r2(inc-fix-per-target),bank:secTot('banks')}}
+
+function header(){const c=calc();$('#month').textContent=S.month;const f=$('#free');f.textContent=eur(c.free);f.className='fig1'+(c.free<0?' neg':'');
+ $('#freeLabel').textContent=c.free<0?'Over budget this month, after fixed costs, personal spending and your '+S.savePct+'% savings.':'Free to spend this month, after fixed costs, personal spending and your '+S.savePct+'% savings.'}
+
+function summary(){const c=calc();const out=c.fix+c.per+c.target;const scale=Math.max(c.inc,out)||1;
+ const seg=(v,col,cls)=>v>0?'<span class="'+(cls||'')+'" style="width:'+(v/scale*100)+'%;background:'+col+'"></span>':'';
+ let bar=seg(c.fix,'var(--fix)')+seg(c.per,'var(--per)');
+ if(c.free>=0)bar+=seg(c.target,'var(--sav)')+seg(c.free,'var(--free)');
+ else{const sv=Math.max(0,c.inc-c.fix-c.per);bar+=seg(Math.min(sv,c.target),'var(--sav)')+seg(out-Math.max(c.inc,c.fix+c.per),'','over')}
+ const mark=c.free<0?'<i class="mark" style="left:calc('+(c.inc/scale*100)+'% - 1px)"></i>':'';
+ const row=(go,col,lbl,sub,v,neg)=>'<li><button data-go="'+go+'"><i class="dot" style="background:'+col+'"></i><span class="nm">'+lbl+(sub?'<small>'+sub+'</small>':'')+'</span><span class="amt'+(neg?' neg':'')+'">'+eur(v)+'</span></button></li>';
+ const ps=S.personal.filter(i=>tot(i)>0).sort((a,b)=>tot(b)-tot(a));const mx=ps.length?tot(ps[0]):1;
+ return '<section class="card"><h2>Where the income goes</h2><p class="mute">'+eur(c.inc)+' in. '+(c.free<0?'Spending and savings go '+eur(-c.free)+' past it (the pink line).':'Everything fits, with '+eur(c.free)+' to spare.')+'</p>'
+ +'<div class="bar">'+bar+mark+'</div><ul class="leg">'
+ +row('income','transparent','Income',S.income.length+' sources',c.inc)
+ +row('fixed','var(--fix)','Fixed costs',pct(c.fix,c.inc).toFixed(0)+'% of income',c.fix)
+ +row('personal','var(--per)','Personal spending',pct(c.per,c.inc).toFixed(0)+'% of income',c.per)
+ +row('savings','var(--sav)','Savings ('+S.savePct+'%)','Set aside from income',c.target)
+ +row('summary',c.free<0?'var(--pink)':'var(--free)',c.free<0?'Over budget':'Left over','',c.free,c.free<0)+'</ul></section>'
+ +'<section class="card"><h3>Personal spending by category</h3>'+(ps.length?ps.map(i=>'<div class="hb"><span>'+esc(i.n)+'</span><i style="width:'+pct(tot(i),mx)+'%"></i><span class="amt">'+eur(tot(i))+'</span></div>').join(''):'<p class="mute">Nothing spent yet.</p>')+'<button class="add" data-go="personal">See all categories</button></section>'
+ +'<section class="card"><h3>Savings pot</h3>'+pot(c)+'</section>'
+ +'<section class="card"><h3>Banks</h3><p class="big">'+eur(c.bank)+'</p><p class="mute">Across '+S.banks.length+' accounts · updated '+dateStr(S.banksUpdated)+'</p><button class="add" data-go="banks">See accounts</button></section>'
+ +'<button class="add nmb" id="nmOpen">Start a new month</button>'
+ +(S.past&&S.past.length?'<section class="card"><h3>Past months</h3><ul class="list">'+S.past.map(p=>'<li class="pm"><span class="nm">'+esc(p.month)+'<small>In '+eur(p.inc)+' · Fixed '+eur(p.fix)+' · Personal '+eur(p.per)+' · Saved '+eur(p.save)+'</small></span><span class="amt'+(p.free<0?' neg':'')+'">'+eur(p.free)+'</span></li>').join('')+'</ul></section>':'')}
+
+function pot(c){return '<div class="meter"><i style="width:'+pct(c.used,c.target)+'%"></i></div><div class="trio"><div>Set aside<b>'+eur(c.target)+'</b></div><div>Allocated<b>'+eur(c.used)+'</b></div><div>'+(c.left<0?'Over by':'Still free')+'<b class="'+(c.left<0?'neg':'')+'">'+eur(Math.abs(c.left))+'</b></div></div>'}
+
+function dateStr(d){if(!d)return 'never';const t=new Date(d+'T12:00:00');return isNaN(t)?d:t.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+
+function listHTML(k){const row=i=>{const n=i.e.length,t=tot(i);return '<li class="it'+(i.g?' in':'')+'" data-id="'+i.id+'">'+HDL+'<button class="row" data-edit="'+k+':'+i.id+'"><span class="nm">'+esc(i.n)+(n>1?'<small>'+n+' entries</small>':'')+'</span><span class="amt'+(n?'':' zero')+'">'+(n?eur(t):'—')+'</span></button></li>'};
+ const gs=[];S[k].forEach(i=>{if(i.g&&!gs.includes(i.g))gs.push(i.g)});
+ let h=S[k].filter(i=>!i.g).map(row).join('');
+ for(const g of gs){const its=S[k].filter(i=>i.g===g);h+='<li class="gh" data-g="'+esc(g)+'">'+HDL+'<button class="grp" data-grp="'+k+'" data-g="'+esc(g)+'" aria-label="Edit group '+esc(g)+'"><span>'+esc(g)+'</span><span class="amt">'+eur(sum(its.map(tot)))+'</span></button></li>'+its.map(row).join('')}
+ return '<ul class="list" data-k="'+k+'">'+h+'</ul>'+(S[k].length>1?'<p class="mute hint">Drag the dots to reorder or to move items in and out of groups. Drag a group\'s dots to move the whole group.</p>':'')+'<div class="two"><button class="add" data-add="'+k+'">+ Add '+(k==='banks'?'account':'item')+'</button><button class="add" data-addg="'+k+'">+ Add group</button></div>'}
+
+function section(k){const c=calc();let h='<section class="card"><h2>'+SECS[k]+'</h2><p class="big">'+eur(k==='savings'?c.used:secTot(k))+'</p>';
+ if(k==='savings')h+='<p class="mute">'+S.savePct+'% of income is set aside each month; the items below are paid from it.</p>'+pot(c)+'<div class="inl"><span class="mute">Savings rate</span><input id="pctIn" inputmode="decimal" value="'+S.savePct+'" aria-label="Savings rate in percent"><span class="mute">%</span></div>';
+ else h+='<p class="mute">'+SUBS[k]+'</p>';
+ if(k==='banks')h+='<div class="inl"><span class="mute">Last updated</span><input type="date" id="bDate" value="'+esc(S.banksUpdated||'')+'"></div>';
+ h+='</section><section class="card">'+listHTML(k)+'</section>';
+ if(k==='income')h+='<section class="card"><h3>Deposits held</h3><p class="mute">Kept for tenants; not counted as income. Total '+eur(secTot('deposits'))+'.</p>'+listHTML('deposits')+'</section>';
+ return h}
+
+function render(){header();let t=(location.hash||'').slice(1);if(!['summary','income','fixed','personal','savings','banks'].includes(t))t='summary';
+ document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.t===t));
+ $('#view').innerHTML=t==='summary'?summary():section(t);
+ const p=$('#pctIn');if(p)p.addEventListener('change',()=>{const v=num(p.value);if(isFinite(v)&&v>=0&&v<=100){S.savePct=v;persist();render()}else p.value=S.savePct});
+ const d=$('#bDate');if(d)d.addEventListener('change',()=>{S.banksUpdated=d.value;persist();render()})}
+
+/* bottom sheet */
+let W=null;
+function openSheet(html){$('#sheet').innerHTML=html;$('#ov').classList.add('open');document.body.classList.add('lock');const f=$('#sheet input');if(f)setTimeout(()=>f.focus(),50)}
+function closeSheet(){$('#ov').classList.remove('open');document.body.classList.remove('lock');W=null;NM=null;G=null}
+function edit(k,id,o){o=o||{};const it=S[k].find(i=>i.id===id);W={k,id,isNew:!it,ng:!!o.ng,n:it?it.n:'',g:it?(it.g||''):(o.g||''),raw:it?it.e.map(String):[''],del:false};drawEdit()}
+function drawEdit(){const t=W.raw.map(num).filter(isFinite);
+ const gl=[...new Set(S[W.k].map(i=>i.g).filter(Boolean))];
+ const gf='<label>'+(W.ng?'Group name':'Group (optional)')+'<input id="fG" list="gList" value="'+esc(W.g||'')+'" autocomplete="off" placeholder="'+(W.ng?'e.g. Toyota CHR':'No group')+'"></label><datalist id="gList">'+gl.map(g=>'<option value="'+esc(g)+'">').join('')+'</datalist>';
+ const nf='<label>'+(W.ng?'First item':'Name')+'<input id="fN" value="'+esc(W.n)+'" autocomplete="off"></label>';
+ openSheet('<h3>'+(W.ng?'New group in ':W.isNew?'New in ':'')+SECS[W.k]+'</h3>'+(W.ng?gf+nf:nf+gf)+'<p class="mute" style="margin-bottom:6px">Amounts'+(W.raw.length>1?' (each purchase or payment)':'')+'</p>'
+ +W.raw.map((v,i)=>'<div class="ent"><input inputmode="decimal" data-i="'+i+'" value="'+esc(v)+'" placeholder="0.00" aria-label="Amount '+(i+1)+'"><button class="x" data-rm="'+i+'" aria-label="Remove amount">×</button></div>').join('')
+ +'<button class="add" id="fAddE">+ Add amount</button><div class="tot"><span>Total</span><span id="fTot">'+eur(sum(t))+'</span></div><p class="err" id="fErr"></p>'
+ +'<div class="btns">'+(W.isNew?'':'<button class="danger" id="fDel">'+(W.del?'Tap again to delete':'Delete')+'</button>')+'<button id="fCancel">Cancel</button><button class="pri" id="fSave">Save</button></div>')}
+function syncW(){if(!W)return;const n=$('#fN');if(n)W.n=n.value;const gi=$('#fG');if(gi)W.g=gi.value;document.querySelectorAll('#sheet [data-i]').forEach(x=>W.raw[+x.dataset.i]=x.value)}
+function saveEdit(){syncW();const n=W.n.trim(),g=(W.g||'').trim();if(W.ng&&!g){$('#fErr').textContent='Give the group a name.';return}if(!n){$('#fErr').textContent=W.ng?'Name the first item.':'Give it a name.';return}
+ const bad=W.raw.filter(v=>v.trim()!==''&&!isFinite(num(v)));if(bad.length){$('#fErr').textContent='"'+bad[0]+'" is not a number.';return}
+ const e=W.raw.map(num).filter(isFinite);
+ if(W.isNew){S[W.k].push({id:uid(),n,e,g})}else{const it=S[W.k].find(i=>i.id===W.id);it.n=n;it.e=e;it.g=g}
+ closeSheet();persist();render();toast('Saved '+n)}
+
+function quick(){const opts=['personal','fixed','savings','income'].map(k=>'<optgroup label="'+SECS[k]+'">'+S[k].map(i=>'<option value="'+k+':'+i.id+'"'+(i.n==='Groceries'?' selected':'')+'>'+esc(i.n+(i.g?' ('+i.g+')':''))+'</option>').join('')+'</optgroup>').join('');
+ openSheet('<h3>Add an amount</h3><label>Amount (€)<input id="qA" class="qamt" inputmode="decimal" placeholder="0.00"></label><label>Category<select id="qC">'+opts+'</select></label><p class="err" id="qErr"></p><div class="btns"><button id="fCancel">Cancel</button><button class="pri" id="qSave">Add</button></div>')}
+function saveQuick(){const v=num($('#qA').value);if(!isFinite(v)||v===0){$('#qErr').textContent='Enter an amount.';return}
+ const [k,id]=$('#qC').value.split(':');const it=S[k].find(i=>i.id===id);it.e.push(v);closeSheet();persist();render();toast('Added '+eur(v)+' to '+it.n)}
+
+/* new month */
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function nextMonth(m){const p=String(m).trim().split(/\s+/);const i=MONTHS.indexOf(p[0]);const y=parseInt(p[1],10);if(i<0||!y)return '';return i===11?MONTHS[0]+' '+(y+1):MONTHS[i+1]+' '+y}
+let NM=null;
+function newMonth(){NM={m:nextMonth(S.month),inc:S.income.map(i=>({id:i.id,n:i.n,last:tot(i),v:''})),extra:[]};drawNM()}
+function drawNM(){openSheet('<h3>Start a new month</h3><label>Month<input id="nmM" value="'+esc(NM.m)+'" autocomplete="off"></label><p class="mute" style="margin-bottom:10px">How much is coming in this month? Leave a source empty if it pays nothing.</p>'
+ +NM.inc.map((i,k)=>'<label>'+esc(i.n)+' · last month '+eur(i.last)+'<input inputmode="decimal" data-ni="'+k+'" value="'+esc(i.v)+'" placeholder="0.00"></label>').join('')
+ +NM.extra.map((x,k)=>'<div class="ent"><input data-xn="'+k+'" value="'+esc(x.n)+'" placeholder="New source" aria-label="New income source name"><input inputmode="decimal" data-xv="'+k+'" value="'+esc(x.v)+'" placeholder="0.00" aria-label="Amount" style="max-width:8em"></div>').join('')
+ +'<button class="add" id="nmAddInc">+ Add income source</button><p class="mute" style="margin-top:12px">Fixed costs, banks, deposits and your categories carry over. Personal spending and savings start empty. '+esc(S.month)+' is kept under Past months.</p><p class="err" id="nmErr"></p><div class="btns"><button id="fCancel">Cancel</button><button class="pri" id="nmSave">Start month</button></div>')}
+function syncNM(){if(!NM)return;const m=$('#nmM');if(m)NM.m=m.value;document.querySelectorAll('#sheet [data-ni]').forEach(x=>NM.inc[+x.dataset.ni].v=x.value);document.querySelectorAll('#sheet [data-xn]').forEach(x=>NM.extra[+x.dataset.xn].n=x.value);document.querySelectorAll('#sheet [data-xv]').forEach(x=>NM.extra[+x.dataset.xv].v=x.value)}
+function saveNM(){syncNM();const err=t=>{$('#nmErr').textContent=t};const m=NM.m.trim();if(!m)return err('Give the month a name.');
+ const ex=NM.extra.filter(x=>x.n.trim()||x.v.trim());
+ for(const x of NM.inc.concat(ex))if(x.v.trim()!==''&&!isFinite(num(x.v)))return err('"'+x.v+'" is not a number.');
+ if(ex.some(x=>!x.n.trim()))return err('Name the new income source.');
+ const amt=x=>{const v=num(x.v);return isFinite(v)&&v!==0?[v]:[]};const c=calc();
+ S.past=S.past||[];S.past.unshift({month:S.month,inc:c.inc,fix:c.fix,per:c.per,save:c.target,free:c.free,data:JSON.parse(JSON.stringify({savePct:S.savePct,income:S.income,fixed:S.fixed,personal:S.personal,savings:S.savings}))});
+ S.month=m;
+ S.income=NM.inc.map(x=>Object.assign({},S.income.find(i=>i.id===x.id),{e:amt(x)})).concat(ex.map(x=>({id:uid(),n:x.n.trim(),e:amt(x)})));
+ S.personal=S.personal.map(i=>Object.assign({},i,{e:[]}));S.savings=S.savings.map(i=>Object.assign({},i,{e:[]}));
+ NM=null;closeSheet();persist();if(location.hash&&location.hash!=='#summary')location.hash='summary';render();window.scrollTo(0,0);toast('Started '+m)}
+
+/* drag to reorder */
+const HDL='<span class="h" data-h title="Drag to move"><svg width="12" height="18" viewBox="0 0 12 18" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.6"/><circle cx="9" cy="3" r="1.6"/><circle cx="3" cy="9" r="1.6"/><circle cx="9" cy="9" r="1.6"/><circle cx="3" cy="15" r="1.6"/><circle cx="9" cy="15" r="1.6"/></g></svg></span>';
+let D=null;
+function blockOf(h){const a=[h];let n=h.nextElementSibling;while(n&&!n.classList.contains('gh')){a.push(n);n=n.nextElementSibling}return a}
+function order(ul){return [...ul.children].map(x=>x.dataset.id||'g:'+x.dataset.g).join('|')}
+document.addEventListener('pointerdown',e=>{const h=e.target.closest('[data-h]');if(!h||D)return;const li=h.closest('li'),ul=li.parentNode;e.preventDefault();
+ const grp=li.classList.contains('gh'),els=grp?blockOf(li):[li];
+ D={k:ul.dataset.k,ul,li,els,grp,h,off:e.clientY-els[0].getBoundingClientRect().top,y:e.clientY,before:order(ul)};
+ els.forEach(x=>x.classList.add('drag'));document.body.classList.add('dragging');
+ try{h.setPointerCapture(e.pointerId)}catch(_){}
+ h.addEventListener('pointermove',dMove);h.addEventListener('pointerup',dEnd);h.addEventListener('pointercancel',dEnd);D.raf=requestAnimationFrame(tick)});
+function dMove(e){if(!D)return;D.y=e.clientY;place()}
+function tick(){if(!D)return;const m=70,y=D.y,H=innerHeight;let s=0;if(y<m)s=-Math.ceil((m-y)/5);else if(y>H-m)s=Math.ceil((y-(H-m))/5);if(s){scrollBy(0,s);place()}D.raf=requestAnimationFrame(tick)}
+function place(){const {ul,els,y}=D;els.forEach(x=>x.style.transform='');
+ let ref=null;for(const o of ul.children){if(els.includes(o)||(D.grp&&!o.classList.contains('gh')))continue;const r=o.getBoundingClientRect();if(r.top+r.height/2>y){ref=o;break}}
+ const nxt=els[els.length-1].nextElementSibling;if(ref!==nxt)for(const x of els)ul.insertBefore(x,ref);
+ if(!D.grp){let p=D.li.previousElementSibling;while(p&&!p.classList.contains('gh'))p=p.previousElementSibling;D.li.classList.toggle('in',!!p)}
+ const t=y-D.off-els[0].getBoundingClientRect().top;els.forEach(x=>x.style.transform='translateY('+t+'px)')}
+function dEnd(){if(!D)return;const {ul,els,h,k}=D;cancelAnimationFrame(D.raf);h.removeEventListener('pointermove',dMove);h.removeEventListener('pointerup',dEnd);h.removeEventListener('pointercancel',dEnd);
+ els.forEach(x=>{x.style.transform='';x.classList.remove('drag')});document.body.classList.remove('dragging');
+ const changed=order(ul)!==D.before;D=null;if(!changed)return;
+ const by={};S[k].forEach(i=>by[i.id]=i);let cur='';const out=[];
+ for(const li of ul.children){if(li.classList.contains('gh')){cur=li.dataset.g;continue}const it=by[li.dataset.id];if(it){it.g=cur;out.push(it)}}
+ if(out.length===S[k].length){S[k]=out;persist()}render()}
+
+/* groups */
+let G=null;
+function openGroup(k,g){G={k,g};const its=S[k].filter(i=>i.g===g);
+ openSheet('<h3>Group</h3><label>Group name<input id="gN" value="'+esc(g)+'" autocomplete="off"></label><p class="mute">'+its.length+' item'+(its.length===1?'':'s')+' · '+eur(sum(its.map(tot)))+'. Ungroup keeps the items and moves them out of the group.</p><p class="err" id="gErr"></p><div class="btns"><button id="gAdd">+ Add item here</button><button class="danger" id="gUn">Ungroup</button><button id="fCancel">Cancel</button><button class="pri" id="gSave">Save</button></div>')}
+function saveGroup(){const v=$('#gN').value.trim();if(!v){$('#gErr').textContent='Give the group a name.';return}const {k,g}=G;S[k].forEach(i=>{if(i.g===g)i.g=v});closeSheet();persist();render();toast('Saved '+v)}
+function ungroup(){const {k,g}=G;S[k].forEach(i=>{if(i.g===g)i.g=''});closeSheet();persist();render();toast('Ungrouped '+g)}
+
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200)}
+
+/* saving: the page republishes itself with the data embedded */
+let art=null,artDone=false,timer=null,dirty=false;
+const st=m=>{$('#status').textContent=m};
+function build(){const json=JSON.stringify(S).replace(/</g,'\\u003c');
+ return '<!DOCTYPE html>\n<html lang="en"><he'+'ad><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(document.title)+'</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet"><style id="css">'+CSS+'</style></he'+'ad><bo'+'dy><div id="shell">'+SHELL+'</div><scr'+'ipt id="data" type="application/json">'+json+'</scr'+'ipt><scr'+'ipt id="app">'+APP+'</scr'+'ipt></bo'+'dy></ht'+'ml>'}
+function persist(){dirty=true;clearTimeout(timer);st('Saving…');timer=setTimeout(flush,1200)}
+async function flush(){if(!dirty)return;if(!artDone){st('Saving…');return}if(!art){st('View only – not saved');return}
+ try{dirty=false;await art.publish(build());st('Saved')}catch(e){const m=String((e&&(e.code||e.message))||e);dirty=true;st(/not_(granted|writer)/.test(m)?'View only – not saved':/conflict/.test(m)?'Changed elsewhere':'Couldn’t save')}}
+try{(window.claude&&claude.use?claude.use('artifact'):Promise.resolve(null)).then(a=>{art=a;artDone=true;if(dirty)flush();else st(a?'':'View only')}).catch(()=>{artDone=true;st('View only')})}catch(e){artDone=true}
+
+document.addEventListener('click',e=>{const b=e.target.closest('button,[data-go]');if(e.target.id==='ov'){closeSheet();return}if(!b)return;
+ if(b.dataset.go){location.hash=b.dataset.go;window.scrollTo(0,0);return}
+ if(b.dataset.edit){const [k,id]=b.dataset.edit.split(':');edit(k,id);return}
+ if(b.dataset.add){edit(b.dataset.add,null);return}
+ if(b.dataset.addg){edit(b.dataset.addg,null,{ng:true});return}
+ if(b.dataset.grp){openGroup(b.dataset.grp,b.dataset.g);return}
+ if(b.id==='gSave'){saveGroup();return}
+ if(b.id==='gUn'){ungroup();return}
+ if(b.id==='gAdd'){const k=G.k,g=G.g;G=null;edit(k,null,{g});return}
+ if(b.id==='fab'){quick();return}
+ if(b.id==='nmOpen'){newMonth();return}
+ if(b.id==='nmAddInc'){syncNM();NM.extra.push({n:'',v:''});drawNM();const l=document.querySelectorAll('#sheet [data-xn]');l[l.length-1].focus();return}
+ if(b.id==='nmSave'){saveNM();return}
+ if(b.id==='fCancel'){closeSheet();return}
+ if(b.id==='qSave'){saveQuick();return}
+ if(b.id==='fSave'){saveEdit();return}
+ if(b.id==='fAddE'){syncW();W.raw.push('');drawEdit();const l=document.querySelectorAll('#sheet [data-i]');l[l.length-1].focus();return}
+ if(b.dataset.rm){syncW();W.raw.splice(+b.dataset.rm,1);if(!W.raw.length)W.raw.push('');drawEdit();return}
+ if(b.id==='fDel'){syncW();if(!W.del){W.del=true;drawEdit();return}const n=W.n;S[W.k]=S[W.k].filter(i=>i.id!==W.id);closeSheet();persist();render();toast('Deleted '+n)}});
+document.addEventListener('input',e=>{if(W&&e.target.dataset&&e.target.dataset.i!==undefined){syncW();$('#fTot').textContent=eur(sum(W.raw.map(num).filter(isFinite)))}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#ov').classList.contains('open'))closeSheet();if(e.key==='Enter'&&e.target.id==='qA')saveQuick()});
+window.addEventListener('hashchange',render);
+render();
+}</script></body></html>
