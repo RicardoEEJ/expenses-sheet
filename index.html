@@ -85,18 +85,37 @@ label input,label select{display:block;width:100%;margin-top:5px;color:var(--ink
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:12;max-width:90vw}
 #toast.show{opacity:1}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}}
-</style></head><body><div id="shell">
-<header class="wrap"><div class="top"><p class="month" id="month"></p><span id="status"></span></div><p class="fig1" id="free"></p><p class="lead" id="freeLabel"></p></header>
+.tr{display:flex;align-items:center;gap:10px}
+#acct{border:1.5px solid var(--line);background:none;border-radius:999px;padding:4px 12px;font-size:13px;min-height:32px}
+#auth{padding:10vh 0 40px}
+.authc{max-width:420px;margin:0 auto}
+.authc h2{margin-bottom:8px}
+.link{background:none;border:0;color:var(--per);padding:8px 0;min-height:44px;font-size:14px}
+.ok{color:var(--per);font-size:14px;min-height:1.2em;margin:4px 0 0}
+.acc-mail{font-weight:600;word-break:break-all;margin:0 0 12px}
+</style>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head><body>
+<div id="auth" hidden><div class="wrap"><section class="card authc">
+<h2 id="aTitle">Monthly Expenses</h2><p class="mute" id="aSub">Sign in to see your sheet.</p>
+<form id="aForm" novalidate>
+<label id="aEL">Email<input id="aE" type="email" autocomplete="email"></label>
+<label id="aPL">Password<input id="aP" type="password" autocomplete="current-password"></label>
+<p class="err" id="aErr"></p><p class="ok" id="aMsg"></p>
+<div class="btns"><button type="button" id="aSwitch">Create an account</button><button class="pri" type="submit" id="aGo">Sign in</button></div>
+</form>
+<button type="button" class="link" id="aForgot">Forgot password?</button>
+</section></div></div>
+<div id="shell" hidden>
+<header class="wrap"><div class="top"><p class="month" id="month"></p><span class="tr"><span id="status"></span><button id="acct">Account</button></span></div><p class="fig1" id="free"></p><p class="lead" id="freeLabel"></p></header>
 <nav><div class="wrap"><a href="#summary" data-t="summary">Summary</a><a href="#income" data-t="income">Income</a><a href="#fixed" data-t="fixed">Fixed</a><a href="#personal" data-t="personal">Personal</a><a href="#savings" data-t="savings">Savings</a><a href="#banks" data-t="banks">Banks</a></div></nav>
 <main class="wrap" id="view"></main>
 <button id="fab" aria-label="Add expense">+</button>
 <div id="ov"><div id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status"></div>
 </div><script id="app">{
-const SHELL=document.getElementById('shell').innerHTML;
-const CSS=document.getElementById('css').textContent;
-const APP=document.getElementById('app').textContent;
-let S=JSON.parse(document.getElementById('data').textContent);
+let S=null;
 const $=s=>document.querySelector(s);
 const fmt=new Intl.NumberFormat('en-IE',{style:'currency',currency:'EUR'});
 const r2=v=>Math.round(v*100)/100;
@@ -155,7 +174,7 @@ function section(k){const c=calc();let h='<section class="card"><h2>'+SECS[k]+'<
  if(k==='income')h+='<section class="card"><h3>Deposits held</h3><p class="mute">Kept for tenants; not counted as income. Total '+eur(secTot('deposits'))+'.</p>'+listHTML('deposits')+'</section>';
  return h}
 
-function render(){header();let t=(location.hash||'').slice(1);if(!['summary','income','fixed','personal','savings','banks'].includes(t))t='summary';
+function render(){if(!S)return;header();let t=(location.hash||'').slice(1);if(!['summary','income','fixed','personal','savings','banks'].includes(t))t='summary';
  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.t===t));
  $('#view').innerHTML=t==='summary'?summary():section(t);
  const p=$('#pctIn');if(p)p.addEventListener('change',()=>{const v=num(p.value);if(isFinite(v)&&v>=0&&v<=100){S.savePct=v;persist();render()}else p.value=S.savePct});
@@ -184,7 +203,7 @@ function saveEdit(){syncW();const n=W.n.trim(),g=(W.g||'').trim();if(W.ng&&!g){$
 function quick(){const opts=['personal','fixed','savings','income'].map(k=>'<optgroup label="'+SECS[k]+'">'+S[k].map(i=>'<option value="'+k+':'+i.id+'"'+(i.n==='Groceries'?' selected':'')+'>'+esc(i.n+(i.g?' ('+i.g+')':''))+'</option>').join('')+'</optgroup>').join('');
  openSheet('<h3>Add an amount</h3><label>Amount (€)<input id="qA" class="qamt" inputmode="decimal" placeholder="0.00"></label><label>Category<select id="qC">'+opts+'</select></label><p class="err" id="qErr"></p><div class="btns"><button id="fCancel">Cancel</button><button class="pri" id="qSave">Add</button></div>')}
 function saveQuick(){const v=num($('#qA').value);if(!isFinite(v)||v===0){$('#qErr').textContent='Enter an amount.';return}
- const [k,id]=$('#qC').value.split(':');const it=S[k].find(i=>i.id===id);it.e.push(v);closeSheet();persist();render();toast('Added '+eur(v)+' to '+it.n)}
+ const [k,id]=($('#qC').value||':').split(':');const it=k&&S[k]?S[k].find(i=>i.id===id):null;if(!it){$('#qErr').textContent='Add a category first.';return}it.e.push(v);closeSheet();persist();render();toast('Added '+eur(v)+' to '+it.n)}
 
 /* new month */
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -241,15 +260,74 @@ function ungroup(){const {k,g}=G;S[k].forEach(i=>{if(i.g===g)i.g=''});closeSheet
 
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200)}
 
-/* saving: the page republishes itself with the data embedded */
-let art=null,artDone=false,timer=null,dirty=false;
+/* accounts + saving: Supabase (one "sheets" row per user, see supabase/schema.sql) */
+const CFG=window.EXPENSES_CONFIG||{};
+const configured=!!(window.supabase&&CFG.url&&CFG.anonKey&&!/YOUR_/.test(CFG.url+CFG.anonKey));
+const sb=configured?window.supabase.createClient(CFG.url,CFG.anonKey):null;
+const KEYS=['income','deposits','fixed','personal','savings','banks'];
+let user=null,timer=null,dirty=false,saving=false,recovering=false,AM='in';
 const st=m=>{$('#status').textContent=m};
-function build(){const json=JSON.stringify(S).replace(/</g,'\\u003c');
- return '<!DOCTYPE html>\n<html lang="en"><he'+'ad><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(document.title)+'</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet"><style id="css">'+CSS+'</style></he'+'ad><bo'+'dy><div id="shell">'+SHELL+'</div><scr'+'ipt id="data" type="application/json">'+json+'</scr'+'ipt><scr'+'ipt id="app">'+APP+'</scr'+'ipt></bo'+'dy></ht'+'ml>'}
-function persist(){dirty=true;clearTimeout(timer);st('Saving…');timer=setTimeout(flush,1200)}
-async function flush(){if(!dirty)return;if(!artDone){st('Saving…');return}if(!art){st('View only – not saved');return}
- try{dirty=false;await art.publish(build());st('Saved')}catch(e){const m=String((e&&(e.code||e.message))||e);dirty=true;st(/not_(granted|writer)/.test(m)?'View only – not saved':/conflict/.test(m)?'Changed elsewhere':'Couldn’t save')}}
-try{(window.claude&&claude.use?claude.use('artifact'):Promise.resolve(null)).then(a=>{art=a;artDone=true;if(dirty)flush();else st(a?'':'View only')}).catch(()=>{artDone=true;st('View only')})}catch(e){artDone=true}
+const here=()=>location.origin+location.pathname;
+function blank(){const d=new Date();return {month:MONTHS[d.getMonth()]+' '+d.getFullYear(),savePct:20,banksUpdated:'',income:[],deposits:[],fixed:[],personal:['Groceries','Eating out','Leisure','Fuel','Other'].map(n=>({id:uid(),n,e:[]})),savings:[],banks:[]}}
+function normalize(d){d=d&&typeof d==='object'?d:{};const b=blank();for(const k of KEYS)d[k]=Array.isArray(d[k])?d[k].filter(i=>i&&i.id).map(i=>Object.assign({n:'',e:[]},i,{e:Array.isArray(i.e)?i.e.filter(v=>typeof v==='number'):[]})):b[k];
+ if(typeof d.month!=='string'||!d.month)d.month=b.month;if(!isFinite(d.savePct))d.savePct=20;if(typeof d.banksUpdated!=='string')d.banksUpdated='';if(!Array.isArray(d.past))delete d.past;return d}
+
+function persist(){if(!user)return;dirty=true;clearTimeout(timer);st('Saving…');timer=setTimeout(flush,800)}
+async function flush(){clearTimeout(timer);if(!dirty||!user||!S)return;if(saving){timer=setTimeout(flush,400);return}
+ saving=true;dirty=false;let ok=false;
+ try{const {error}=await sb.from('sheets').upsert({user_id:user.id,data:JSON.parse(JSON.stringify(S)),updated_at:new Date().toISOString()});ok=!error;if(error)console.error(error)}catch(e){console.error(e)}
+ saving=false;
+ if(!ok){dirty=true;st(navigator.onLine===false?'Offline – will retry':'Couldn’t save – retrying');timer=setTimeout(flush,5000)}else if(!dirty)st('Saved')}
+window.addEventListener('beforeunload',e=>{if(dirty||saving){e.preventDefault();e.returnValue=''}});
+window.addEventListener('online',()=>{if(dirty)flush()});
+
+async function load(){if(recovering||!user)return;st('Loading…');showApp(true);
+ const {data,error}=await sb.from('sheets').select('data').eq('user_id',user.id).maybeSingle();
+ if(error){console.error(error);user=null;await sb.auth.signOut();showAuth();$('#aErr').textContent='Couldn’t load your sheet: '+error.message;return}
+ if(data){S=normalize(data.data);showApp();st('')}
+ else{S=blank();showApp();persist();welcome()}}
+
+function showApp(loading){$('#auth').hidden=true;$('#shell').hidden=false;if(loading){$('#view').innerHTML='<p class="mute">Loading your sheet…</p>';return}render()}
+function showAuth(){closeSheet();$('#shell').hidden=true;$('#auth').hidden=false;setMode(recovering?'newpw':AM)}
+function setMode(m){AM=m;const T={in:['Monthly Expenses','Sign in to see your sheet.','Sign in','Create an account'],up:['Create an account','Your sheet is private to your account.','Create account','I already have an account'],forgot:['Reset password','We’ll email you a link to choose a new password.','Send reset link','Back to sign in'],newpw:['Choose a new password','Enter the new password for your account.','Save password','']}[m];
+ $('#aTitle').textContent=T[0];$('#aSub').textContent=T[1];$('#aGo').textContent=T[2];$('#aSwitch').textContent=T[3];$('#aSwitch').hidden=!T[3];
+ $('#aEL').hidden=m==='newpw';$('#aPL').hidden=m==='forgot';$('#aForgot').hidden=m!=='in';
+ $('#aP').autocomplete=m==='in'?'current-password':'new-password';$('#aErr').textContent='';
+ if(!configured){$('#aSub').textContent='Not connected yet: add your Supabase project URL and anon key to config.js, then reload.';$('#aGo').disabled=true}}
+async function authSubmit(e){e.preventDefault();if(!sb)return;const em=$('#aE').value.trim(),pw=$('#aP').value,go=$('#aGo');
+ const err=t=>{$('#aErr').textContent=t},msg=t=>{$('#aMsg').textContent=t};err('');msg('');
+ if(AM!=='newpw'&&!/^\S+@\S+\.\S+$/.test(em))return err('Enter your email address.');
+ if(AM!=='forgot'&&pw.length<6)return err('Password needs at least 6 characters.');
+ go.disabled=true;
+ try{let r;
+  if(AM==='in')r=await sb.auth.signInWithPassword({email:em,password:pw});
+  else if(AM==='up'){r=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:here()}});if(!r.error&&!r.data.session){setMode('in');msg('Check '+em+' for a link to confirm your account, then sign in.');return}}
+  else if(AM==='forgot'){r=await sb.auth.resetPasswordForEmail(em,{redirectTo:here()});if(!r.error){setMode('in');msg('If that email has an account, a reset link is on its way.');return}}
+  else{r=await sb.auth.updateUser({password:pw});if(!r.error){recovering=false;$('#aP').value='';history.replaceState(null,'',here());load();return}}
+  if(r.error)err(r.error.message)}
+ catch(x){err('Couldn’t reach the server. Check your connection.')}
+ finally{go.disabled=false}}
+$('#aForm').addEventListener('submit',authSubmit);
+$('#aSwitch').addEventListener('click',()=>{setMode(AM==='in'?'up':'in');$('#aMsg').textContent=''});
+$('#aForgot').addEventListener('click',()=>{setMode('forgot');$('#aMsg').textContent=''});
+
+async function signOut(){if(dirty||saving){st('Saving…');await flush();while(saving)await new Promise(r=>setTimeout(r,100))}
+ if(dirty&&!confirm('Some changes haven’t saved yet. Sign out anyway?'))return;
+ dirty=false;await sb.auth.signOut()}
+
+function welcome(){openSheet('<h3>Welcome</h3><p class="mute" style="margin-bottom:14px">Your sheet is ready and starts empty. If you have a saved sheet (.json), import it now. You can also do this later from Account.</p>'+importField()+'<div class="btns"><button class="pri" id="fCancel">Start empty</button></div>')}
+function account(){openSheet('<h3>Account</h3><p class="mute">Signed in as</p><p class="acc-mail">'+esc(user.email||'')+'</p><button class="add" id="expBtn">Download a backup (.json)</button>'+importField(true)+'<div class="btns"><button class="danger" id="outBtn">Sign out</button><button class="pri" id="fCancel">Close</button></div>')}
+function importField(warn){return '<label style="margin-top:14px">Import a saved sheet'+(warn?' (replaces what is here now)':'')+'<input type="file" id="impF" accept=".json,application/json"></label><p class="err" id="impErr"></p>'}
+async function importFile(f){try{const d=JSON.parse(await f.text());if(!d||typeof d!=='object'||!KEYS.some(k=>Array.isArray(d[k])))throw 0;S=normalize(d);closeSheet();persist();render();toast('Imported '+S.month)}catch(_){$('#impErr').textContent='That file isn’t a saved expenses sheet.'}}
+function exportFile(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='expenses-'+S.month.replace(/\s+/g,'-').toLowerCase()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+document.addEventListener('change',e=>{if(e.target.id==='impF'&&e.target.files[0])importFile(e.target.files[0])});
+
+if(sb)sb.auth.onAuthStateChange((ev,session)=>{const u=session?session.user:null;
+ if(ev==='PASSWORD_RECOVERY'){recovering=true;user=u;showAuth();return}
+ if(recovering)return;
+ if(u&&(!user||user.id!==u.id)){user=u;setTimeout(load,0)}
+ else if(!u){const was=!!user;user=null;S=null;dirty=false;clearTimeout(timer);if(was||$('#auth').hidden)showAuth()}});
+else showAuth();
 
 document.addEventListener('click',e=>{const b=e.target.closest('button,[data-go]');if(e.target.id==='ov'){closeSheet();return}if(!b)return;
  if(b.dataset.go){location.hash=b.dataset.go;window.scrollTo(0,0);return}
@@ -261,6 +339,9 @@ document.addEventListener('click',e=>{const b=e.target.closest('button,[data-go]
  if(b.id==='gUn'){ungroup();return}
  if(b.id==='gAdd'){const k=G.k,g=G.g;G=null;edit(k,null,{g});return}
  if(b.id==='fab'){quick();return}
+ if(b.id==='acct'){account();return}
+ if(b.id==='expBtn'){exportFile();return}
+ if(b.id==='outBtn'){closeSheet();signOut();return}
  if(b.id==='nmOpen'){newMonth();return}
  if(b.id==='nmAddInc'){syncNM();NM.extra.push({n:'',v:''});drawNM();const l=document.querySelectorAll('#sheet [data-xn]');l[l.length-1].focus();return}
  if(b.id==='nmSave'){saveNM();return}
@@ -273,5 +354,4 @@ document.addEventListener('click',e=>{const b=e.target.closest('button,[data-go]
 document.addEventListener('input',e=>{if(W&&e.target.dataset&&e.target.dataset.i!==undefined){syncW();$('#fTot').textContent=eur(sum(W.raw.map(num).filter(isFinite)))}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#ov').classList.contains('open'))closeSheet();if(e.key==='Enter'&&e.target.id==='qA')saveQuick()});
 window.addEventListener('hashchange',render);
-render();
 }</script></body></html>
